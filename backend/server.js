@@ -1,11 +1,12 @@
 import express from "express";
 import cors from "cors";
-
+import organizationRoutes from "./routes/organizationRoutes.js";
 import env from "./config/env.js";
 import centralDb from "./config/db.js";
 import orgADb from "./config/dbOrgA.js";
 import orgBDb from "./config/dbOrgB.js";
 import orgCDb from "./config/dbOrgC.js";
+import scholarshipRoutes from "./routes/scholarshipRoutes.js";
 
 import studentRoutes from "./routes/studentRoutes.js";
 
@@ -42,7 +43,10 @@ app.get("/api/health/db", async (req, res) => {
     }
 });
 
+
+app.use("/api/organizations", organizationRoutes);
 app.use("/api/students", studentRoutes);
+app.use("/api", scholarshipRoutes);
 
 app.listen(env.port, () => {
     console.log(
