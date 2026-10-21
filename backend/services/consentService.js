@@ -15,7 +15,7 @@ export async function requestConsent(queryId) {
                 SELECT
                     query_id,
                     student_id,
-                    organization_id,
+                    primary_organization_id,
                     status
                 FROM QUERY_LOG
                 WHERE query_id = ?

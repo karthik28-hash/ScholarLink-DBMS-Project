@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:migrate": "node scripts/migrate.js"
+    "db:migrate": "node scripts/migrate.js",
+    "dev:org:sbi": "nodemon organizationApis/sbiServer.js",
+    "dev:org:tata": "nodemon organizationApis/tataServer.js",
+    "dev:org:reliance": "nodemon organizationApis/relianceServer.js"
   },
   "keywords": [
     "scholarlink",

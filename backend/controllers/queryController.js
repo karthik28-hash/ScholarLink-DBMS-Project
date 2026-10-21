@@ -14,32 +14,50 @@ import {
 
 import generateId from "../utils/generateId.js";
 
-export async function addQuery(
-    req,
-    res,
-    next
-) {
+export async function addQuery(req, res, next) {
     try {
         const {
             studentId,
             organizationId,
+            organizationIds,
             purpose
         } = req.body;
 
-        if (
-            !studentId ||
-            !organizationId ||
-            !purpose
-        ) {
+        if (!studentId || !purpose) {
             return res.status(400).json({
                 success: false,
-                message:
-                    "studentId, organizationId and purpose are required"
+                message: "studentId and purpose are required"
             });
         }
 
-        const student =
-            await getStudentById(studentId);
+        if (
+            organizationIds !== undefined &&
+            !Array.isArray(organizationIds)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "organizationIds must be an array"
+            });
+        }
+
+        const requestedIds = [
+            ...(organizationIds ?? []),
+            ...(organizationId ? [organizationId] : [])
+        ];
+
+        const targetIds = [
+            ...new Set(requestedIds)
+        ];
+
+        if (targetIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Provide organizationId or organizationIds"
+            });
+        }
+
+        const student = await getStudentById(studentId);
 
         if (!student) {
             return res.status(404).json({
@@ -48,34 +66,47 @@ export async function addQuery(
             });
         }
 
-        const organization =
-            await getOrganizationById(
-                organizationId
-            );
+        const organizations = await Promise.all(
+            targetIds.map(id => getOrganizationById(id))
+        );
 
-        if (!organization) {
+        const missingIndex = organizations.findIndex(
+            organization => organization === null
+        );
+
+        if (missingIndex !== -1) {
             return res.status(404).json({
                 success: false,
-                message: "Organization not found"
+                message:
+                    `Organization not found: ${targetIds[missingIndex]}`
             });
         }
+
+        const primaryOrganizationId =
+            organizationId || targetIds[0];
 
         const queryId = generateId("Q");
 
         await createQuery(
             queryId,
             studentId,
-            organizationId,
+            primaryOrganizationId,
+            targetIds,
             purpose
         );
 
-        const query =
-            await getQueryById(queryId);
+        const query = await getQueryById(queryId);
 
         return res.status(201).json({
             success: true,
             message: "Query created successfully",
-            data: query
+            data: {
+                ...query,
+                targetOrganizations: organizations.map(org => ({
+                    organization_id: org.organization_id,
+                    organization_name: org.organization_name
+                }))
+            }
         });
     } catch (error) {
         next(error);

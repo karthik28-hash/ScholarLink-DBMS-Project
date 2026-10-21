@@ -11,7 +11,7 @@ import applicationRoutes from "./routes/applicationRoutes.js";
 import awardRoutes from "./routes/awardRoutes.js";
 import queryRoutes from "./routes/queryRoutes.js";
 import consentRoutes from "./routes/consentRoutes.js";
-
+import federationRoutes from "./routes/federationRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
 
 const app = express();
@@ -55,6 +55,7 @@ app.use("/api", applicationRoutes);
 app.use("/api", awardRoutes);
 app.use("/api/queries", queryRoutes);
 app.use("/api/consents", consentRoutes);
+app.use("/api/federation", federationRoutes);
 
 app.listen(env.port, () => {
     console.log(

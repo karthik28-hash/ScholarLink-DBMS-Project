@@ -3,29 +3,64 @@ import centralDb from "../config/db.js";
 export async function createQuery(
     queryId,
     studentId,
-    organizationId,
+    primaryOrganizationId,
+    organizationIds,
     purpose
 ) {
-    const [result] = await centralDb.query(
-        `
-        INSERT INTO QUERY_LOG (
-            query_id,
-            student_id,
-            organization_id,
-            purpose,
-            status
-        )
-        VALUES (?, ?, ?, ?, 'PENDING');
-        `,
-        [
+    const connection = await centralDb.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        await connection.query(
+            `
+            INSERT INTO QUERY_LOG (
+                query_id,
+                student_id,
+                primary_organization_id,
+                purpose,
+                status
+            )
+            VALUES (?, ?, ?, ?, 'PENDING');
+            `,
+            [
+                queryId,
+                studentId,
+                primaryOrganizationId,
+                purpose
+            ]
+        );
+
+        for (const organizationId of organizationIds) {
+            await connection.query(
+                `
+                INSERT INTO QUERY_TARGET (
+                    query_id,
+                    organization_id,
+                    lookup_status
+                )
+                VALUES (?, ?, 'PENDING');
+                `,
+                [queryId, organizationId]
+            );
+        }
+
+        await connection.commit();
+
+        return {
             queryId,
             studentId,
-            organizationId,
-            purpose
-        ]
-    );
-
-    return result;
+            primaryOrganizationId,
+            organizationIds,
+            purpose,
+            status: "PENDING"
+        };
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 }
 
 export async function getAllQueries() {
@@ -34,8 +69,8 @@ export async function getAllQueries() {
             q.query_id,
             q.student_id,
             s.name AS student_name,
-            q.organization_id,
-            o.organization_name,
+            q.primary_organization_id,
+            o.organization_name AS primary_organization_name,
             q.query_time,
             q.purpose,
             q.status
@@ -43,7 +78,7 @@ export async function getAllQueries() {
         JOIN STUDENT s
             ON q.student_id = s.student_id
         JOIN ORGANIZATION o
-            ON q.organization_id = o.organization_id
+            ON q.primary_organization_id = o.organization_id
         ORDER BY q.query_time DESC;
     `);
 
@@ -57,8 +92,8 @@ export async function getQueryById(queryId) {
             q.query_id,
             q.student_id,
             s.name AS student_name,
-            q.organization_id,
-            o.organization_name,
+            q.primary_organization_id,
+            o.organization_name AS primary_organization_name,
             q.query_time,
             q.purpose,
             q.status
@@ -66,7 +101,7 @@ export async function getQueryById(queryId) {
         JOIN STUDENT s
             ON q.student_id = s.student_id
         JOIN ORGANIZATION o
-            ON q.organization_id = o.organization_id
+            ON q.primary_organization_id = o.organization_id
         WHERE q.query_id = ?;
         `,
         [queryId]
@@ -80,14 +115,14 @@ export async function getQueriesByStudent(studentId) {
         `
         SELECT
             q.query_id,
-            q.organization_id,
-            o.organization_name,
+            q.primary_organization_id,
+            o.organization_name AS primary_organization_name,
             q.query_time,
             q.purpose,
             q.status
         FROM QUERY_LOG q
         JOIN ORGANIZATION o
-            ON q.organization_id = o.organization_id
+            ON q.primary_organization_id = o.organization_id
         WHERE q.student_id = ?
         ORDER BY q.query_time DESC;
         `,
@@ -97,10 +132,7 @@ export async function getQueriesByStudent(studentId) {
     return rows;
 }
 
-export async function updateQueryStatus(
-    queryId,
-    status
-) {
+export async function updateQueryStatus(queryId, status) {
     const [result] = await centralDb.query(
         `
         UPDATE QUERY_LOG
