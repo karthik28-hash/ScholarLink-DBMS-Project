@@ -1,5 +1,8 @@
 import mysql from "mysql2/promise";
 import env from "./env.js";
+import { getDbSslOptions } from "./dbSsl.js";
+
+const ssl = getDbSslOptions();
 
 const poolOrgC = mysql.createPool({
   host: env.dbHost,
@@ -10,7 +13,8 @@ const poolOrgC = mysql.createPool({
 
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ...(ssl ? { ssl } : {})
 });
 
-export default poolOrgC;
+export default poolOrgC;

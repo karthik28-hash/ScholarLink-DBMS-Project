@@ -16,7 +16,59 @@ import studentRoutes from "./routes/studentRoutes.js";
 
 const app = express();
 
-app.use(cors());
+// Allowed origins configuration: combines env.frontendUrl with local dev ports
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:4173",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:4173",
+];
+
+if (env.frontendUrl) {
+  env.frontendUrl.split(",").forEach((origin) => {
+    const trimmed = origin.trim().replace(/\/+$/, "");
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
+}
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests (server-to-server, health checks, curl)
+      if (!origin) return callback(null, true);
+
+      // Always allow local development
+      if (
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:")
+      ) {
+        return callback(null, true);
+      }
+
+      // Allow configured origins or wildcard
+      if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow Vercel preview or production deployments
+      if (origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`CORS origin '${origin}' not allowed by ScholarLink policy`)
+      );
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -37,12 +89,12 @@ app.get("/api/health/db", async (req, res) => {
             message: "All databases connected successfully"
         });
     } catch (error) {
-        console.error(error);
+        console.error("Database health check error:", error.message);
 
         res.status(500).json({
             success: false,
             message: "Database connection failed",
-            error: error.message
+            error: process.env.NODE_ENV === "production" ? "Unable to connect to database" : error.message
         });
     }
 });
@@ -57,8 +109,22 @@ app.use("/api/queries", queryRoutes);
 app.use("/api/consents", consentRoutes);
 app.use("/api/federation", federationRoutes);
 
-app.listen(env.port, () => {
-    console.log(
-        `ScholarLink backend running on port ${env.port}`
-    );
+// Centralized error-handling middleware preventing stack trace leaks
+app.use((err, req, res, next) => {
+    console.error("[ScholarLink Error]:", err.message);
+    const status = err.statusCode || err.status || 500;
+    res.status(status).json({
+        success: false,
+        message: process.env.NODE_ENV === "production" && status === 500
+            ? "An unexpected internal server error occurred"
+            : err.message
+    });
 });
+
+const port = Number(process.env.PORT || env.port || 5000);
+
+app.listen(port, "0.0.0.0", () => {
+    console.log(
+        `ScholarLink backend running on port ${port} (0.0.0.0)`
+    );
+});

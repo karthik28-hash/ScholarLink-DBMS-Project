@@ -99,12 +99,15 @@ export async function performFederatedLookup(
             }
 
             try {
+                const timeoutMs = Number(env.federationTimeoutMs || 30000);
+
                 const response = await fetch(
                     `${baseUrl}/api/students/${encodeURIComponent(studentId)}/summary`,
                     {
-                        signal: AbortSignal.timeout(5000)
+                        signal: AbortSignal.timeout(timeoutMs)
                     }
                 );
+
 
                 if (!response.ok) {
                     throw new Error(

@@ -10,8 +10,10 @@
     "db:migrate": "node scripts/migrate.js",
     "dev:org:sbi": "nodemon organizationApis/sbiServer.js",
     "dev:org:tata": "nodemon organizationApis/tataServer.js",
-    "dev:org:reliance": "nodemon organizationApis/relianceServer.js"
+    "dev:org:reliance": "nodemon organizationApis/relianceServer.js",
+    "test:deployment": "node scripts/test_deployment.js"
   },
+
   "keywords": [
     "scholarlink",
     "dbms",

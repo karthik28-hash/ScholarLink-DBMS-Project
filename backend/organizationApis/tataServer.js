@@ -11,8 +11,16 @@ const app = createOrganizationApp({
     organizationName: "Tata Capital"
 });
 
-app.listen(env.tataApiPort, () => {
+const port = Number(
+    process.env.TATA_API_PORT ||
+    process.env.PORT ||
+    env.tataApiPort ||
+    5002
+);
+
+app.listen(port, "0.0.0.0", () => {
     console.log(
-        `Tata Capital API running on port ${env.tataApiPort}`
+        `Tata Capital API running on port ${port} (0.0.0.0)`
     );
 });
+

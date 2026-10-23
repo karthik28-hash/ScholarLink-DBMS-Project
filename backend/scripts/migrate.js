@@ -4,16 +4,17 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import env from "../config/env.js";
+import { getDbSslOptions } from "../config/dbSsl.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const migrationsDirectory = path.resolve(
-    __dirname,
-    "../../database/migrations"
-);
+// Allows running from repository root, backend/ directory, or via custom MIGRATIONS_DIR
+const migrationsDirectory = process.env.MIGRATIONS_DIR
+    ? path.resolve(process.env.MIGRATIONS_DIR)
+    : path.resolve(__dirname, "../../database/migrations");
 
-const MIGRATION_TABLE = "scholarlink_central.schema_migrations";
+const MIGRATION_TABLE = `${env.centralDb}.schema_migrations`;
 
 function getMigrationNumber(filePath) {
     const fileName = path.basename(filePath);
@@ -111,6 +112,8 @@ async function main() {
 
     // Connect to the MySQL SERVER, not to a specific database.
     // This is necessary because the databases may not exist yet.
+    const ssl = getDbSslOptions();
+
     const connection = await mysql.createConnection({
         host: env.dbHost,
         user: env.dbUser,
@@ -118,7 +121,8 @@ async function main() {
         port: Number(env.dbPort),
 
         // Migration files may contain multiple SQL statements.
-        multipleStatements: true
+        multipleStatements: true,
+        ...(ssl ? { ssl } : {})
     });
 
     try {

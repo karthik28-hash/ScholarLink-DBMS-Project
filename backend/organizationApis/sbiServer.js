@@ -11,8 +11,16 @@ const app = createOrganizationApp({
     organizationName: "SBI Foundation"
 });
 
-app.listen(env.sbiApiPort, () => {
+const port = Number(
+    process.env.SBI_API_PORT ||
+    process.env.PORT ||
+    env.sbiApiPort ||
+    5001
+);
+
+app.listen(port, "0.0.0.0", () => {
     console.log(
-        `SBI Foundation API running on port ${env.sbiApiPort}`
+        `SBI Foundation API running on port ${port} (0.0.0.0)`
     );
 });
+
